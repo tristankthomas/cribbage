@@ -35,9 +35,28 @@ generate_list([C|Cs], Type, Acc, Res) :-
     append([Value], Acc, NewAcc),
     generate_list(Cs, Type, NewAcc, Res).
 
+% Counts the frequency of Elt and returns the rest of list
+count_frequency(Elt, List, Rest, Freq) :-
+    count_frequency(Elt, List, 0, Rest, Freq).
+
+count_frequency(_, [], Acc, [], Acc).
+
+count_frequency(Elt, [Elt|Rest], Acc, Excess, Freq) :-
+    Acc1 is Acc + 1,
+    count_frequency(Elt, Rest, Acc1, Excess, Freq).
+
+count_frequency(_, [X|Rest], Acc, [X|Rest], Acc).
+
+% generates frequencies of values in list
+list_to_freq([], []).
+list_to_freq([X|Xs], [X-Freq|Pairs]) :-
+    count_frequency(X, [X|Xs], NewXs, Freq),
+    list_to_freq(NewXs, Pairs).
+
 % hand value predicate
 hand_value(Hand, Startcard, Value) :-
     % pairs and runs scoring
     All = [Startcard|Hand],
     generate_list(All, nosum, List),
-    msort(List, Sorted).
+    msort(List, Sorted),
+    list_to_freq(Sorted, Freqs).

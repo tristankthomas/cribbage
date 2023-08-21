@@ -4,11 +4,7 @@
  * Date: 19-08-2023
  */
 
-% custom maplist
-maplist(_, [], []).
-maplist(P, [X|Xs], [Y|Ys]) :-
-    call(P, X, Y),
-    maplist(P, Xs, Ys).
+
 
 % convert rank to numeric value for sorting
 
@@ -52,7 +48,8 @@ count_frequency(Elt, [Elt|Rest], Acc, Excess, Freq) :-
     Acc1 is Acc + 1,
     count_frequency(Elt, Rest, Acc1, Excess, Freq).
 
-count_frequency(_, [X|Rest], Acc, [X|Rest], Acc).
+count_frequency(Elt, [X|Rest], Acc, [X|Rest], Acc) :-
+    Elt \= X.
 
 % generates frequencies of values in list
 list_to_freq([], []).
@@ -81,7 +78,7 @@ consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx], [Y-Fy | Rest]) :-
     X + 1 =\= Y.
 
 generate_runs([], []).
-generate_runs([X-Fx,Y-Fy], []).
+generate_runs([_,_], []).
 generate_runs([X-Fx,Y-Fy|Rest], Runs) :-
     % check for potential runs
     X + 1 =:= Y,
@@ -110,18 +107,69 @@ points_list(Run-Len, Points) :-
 
 calculate_runs(List, Points) :-
     generate_runs(List, Runs),
-    maplist(points_list, Runs, PointsPerRun),
+    map_list(points_list, Runs, PointsPerRun),
     sum_list(PointsPerRun, Points).
+
+% calculate total points for 15s
+
+% Calculate the score for a list of cards
+calculate_score([], 0).
+calculate_score([Card | Rest], Score) :-
+    calculate_score(Rest, RestScore),
+    Score is RestScore + Card.
+
+% Check if a combination of cards adds up to 15
+adds_up_to_15(Cards) :-
+    calculate_score(Cards, TotalScore),
+    TotalScore =:= 15.
+
+% Find all distinct combinations of cards that add up to 15
+is_15(Number, Res) :-
+    (Number =:= 15 -> Res = 1 ; Res = 0).
+
+combination(_, 0, []).
+combination([X|Xs], K, [X|Combination]) :-
+    K > 0,
+    K1 is K - 1,
+    combination(Xs, K1, Combination).
+combination([_|Xs], K, Combination) :-
+    K > 0,
+    combination(Xs, K, Combination).
+
+combinations(_, [], []).
+combinations(List, [N|Ns], Combs) :-
+    findall(Comb, combination(List, N, Comb), NewCombs),
+    combinations(List, Ns, RestCombs),
+    append(NewCombs, RestCombs, Combs).
+
+calculate_15s(List, FPoints) :-
+    numlist(2, 5, Nums),
+    combinations(List, Nums, Res),
+    map_list(sum_list, Res, Sums),
+    map_list(is_15, Sums, Is15s),
+    sum_list(Is15s, Successes),
+    FPoints is Successes * 2.
+
+
+% custom maplist
+map_list(_, [], []).
+map_list(P, [X|Xs], [Y|Ys]) :-
+    call(P, X, Y),
+    map_list(P, Xs, Ys).
 
 % hand value predicate
 hand_value(Hand, Startcard, Value) :-
     % pairs and runs scoring
     All = [Startcard|Hand],
-    generate_list(All, nosum, List),
-    msort(List, Sorted),
-    list_to_freq(Sorted, Freqs),
-    calculate_pairs(Freqs, PairsPoints),
-    calculate_runs(Freqs, RunsPoints),
-    Value is PairsPoints + RunsPoints.
+    generate_list(All, nosum, List1),
+    msort(List1, Sorted1),
+    list_to_freq(Sorted1, Freqs1),
+    calculate_pairs(Freqs1, PairsPoints),
+    calculate_runs(Freqs1, RunsPoints),
+    % 15s scoring
+    generate_list(All, sum, List2),
+    calculate_15s(List2, FPoints),
+    Value is PairsPoints + RunsPoints + FPoints.
+
 
 

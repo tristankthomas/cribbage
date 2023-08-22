@@ -8,35 +8,38 @@
 
 % convert rank to numeric value for sorting
 
-rank_to_int(card(ace, _), _, 1).
+card_to_rank(card(ace, _), _, 1).
 
-rank_to_int(card(jack, _), Type, Value) :-
+card_to_rank(card(jack, _), Type, Value) :-
     ( Type == nosum ->
         Value = 11 ;
         Value = 10 ).
-rank_to_int(card(queen, _), Type, Value) :-
+card_to_rank(card(queen, _), Type, Value) :-
     ( Type == nosum ->
         Value = 12 ;
         Value = 10 ).
-rank_to_int(card(king, _), Type, Value) :-
+card_to_rank(card(king, _), Type, Value) :-
     ( Type == nosum ->
         Value = 13 ;
         Value = 10 ).
 
-rank_to_int(card(Rank, _), _, Value) :-
+card_to_rank(card(Rank, _), _, Value) :-
     integer(Rank),
     Value is Rank.
 
+card_to_suit(card(_, Suit), _, Value) :-
+    Value = Suit.
+
 % generate list of sortable cards by rank
-generate_list(Cards, Type, Res) :-
-    generate_list(Cards, Type, [], Res).
+generate_list(Cards, Type, Conversion, Res) :-
+    generate_list(Cards, Type, Conversion, [], Res).
 
-generate_list([], _, Acc, Acc).
+generate_list([], _, _, Acc, Acc).
 
-generate_list([C|Cs], Type, Acc, Res) :-
-    rank_to_int(C, Type, Value),
+generate_list([C|Cs], Type, Conversion, Acc, Res) :-
+    call(Conversion, C, Type, Value),
     append([Value], Acc, NewAcc),
-    generate_list(Cs, Type, NewAcc, Res).
+    generate_list(Cs, Type, Conversion, NewAcc, Res).
 
 % Counts the frequency of Elt and returns the rest of list
 count_frequency(Elt, List, Rest, Freq) :-
@@ -142,13 +145,27 @@ combinations(List, [N|Ns], Combs) :-
     combinations(List, Ns, RestCombs),
     append(NewCombs, RestCombs, Combs).
 
-calculate_15s(List, FPoints) :-
+calculate_15s(List, SumPoints) :-
     numlist(2, 5, Nums),
     combinations(List, Nums, Res),
     map_list(sum_list, Res, Sums),
     map_list(is_15, Sums, Is15s),
     sum_list(Is15s, Successes),
-    FPoints is Successes * 2.
+    SumPoints is Successes * 2.
+
+
+% calculate flush points
+calculate_flush(Hand, StartSuit, Points) :-
+    list_to_freq(Hand, Freqs),
+    length(Freqs, 1),
+    Freqs = [Suit-_|_],
+    ( Suit = StartSuit -> 
+        Points = 5 ;
+        Points = 4 ).
+
+calculate_flush(_, _, 0).
+
+
 
 
 % custom maplist
@@ -161,15 +178,17 @@ map_list(P, [X|Xs], [Y|Ys]) :-
 hand_value(Hand, Startcard, Value) :-
     % pairs and runs scoring
     All = [Startcard|Hand],
-    generate_list(All, nosum, List1),
+    generate_list(All, nosum, card_to_rank, List1),
     msort(List1, Sorted1),
     list_to_freq(Sorted1, Freqs1),
     calculate_pairs(Freqs1, PairsPoints),
     calculate_runs(Freqs1, RunsPoints),
     % 15s scoring
-    generate_list(All, sum, List2),
-    calculate_15s(List2, FPoints),
-    Value is PairsPoints + RunsPoints + FPoints.
-
-
+    generate_list(All, sum, card_to_rank, List2),
+    calculate_15s(List2, SumPoints),
+    % flush scoring
+    generate_list(Hand, _, card_to_suit, List3),
+    card_to_suit(Startcard, _, Start3),
+    calculate_flush(List3, Start3, FlushPoints),
+    Value is PairsPoints + RunsPoints + SumPoints + FlushPoints.
 

@@ -4,7 +4,25 @@
  * Date: 19-08-2023
  */
 
+% terms
+rank(ace).
+rank(2).
+rank(3).
+rank(4).
+rank(5).
+rank(6).
+rank(7).
+rank(8).
+rank(9).
+rank(10).
+rank(jack).
+rank(queen).
+rank(king).
 
+suit(diamonds).
+suit(clubs).
+suit(hearts).
+suit(spades).
 
 % convert rank to numeric value for sorting
 
@@ -49,7 +67,7 @@ count_frequency(_, [], Acc, [], Acc).
 
 count_frequency(Elt, [Elt|Rest], Acc, Excess, Freq) :-
     Acc1 is Acc + 1,
-    count_frequency(Elt, Rest, Acc1, Excess, Freq).
+    count_frequency(Elt, Rest, Acc1, Excess, Freq), !.
 
 count_frequency(Elt, [X|Rest], Acc, [X|Rest], Acc) :-
     Elt \= X.
@@ -161,13 +179,13 @@ calculate_flush(Suits, StartSuit, Points) :-
     Freqs = [Suit-_|_],
     ( Suit = StartSuit -> 
         Points = 5 ;
-        Points = 4 ).
+        Points = 4 ), !.
 
 calculate_flush(_, _, 0).
 
 
 % calculate nob point
-calculate_nob(Hand, card(Rank, Suit), Points) :-
+calculate_nob(Hand, card(_, Suit), Points) :-
     member(card(jack, Suit), Hand),
     Points = 1.
 calculate_nob(_, _, 0).
@@ -186,7 +204,7 @@ hand_value(Hand, Startcard, Value) :-
     msort(List1, Sorted1),
     list_to_freq(Sorted1, Freqs1),
     calculate_pairs(Freqs1, PairsPoints),
-    calculate_runs(Freqs1, RunsPoints),
+    % calculate_runs(Freqs1, RunsPoints),
     % 15s scoring
     generate_list(All, sum, card_to_rank, List2),
     calculate_15s(List2, SumPoints),
@@ -195,6 +213,41 @@ hand_value(Hand, Startcard, Value) :-
     card_to_suit(Startcard, _, StartSuit),
     calculate_flush(List3, StartSuit, FlushPoints),
     % nob scoring
-    calculate_nob(Hand, StartCard, NobPoint),
-    Value is PairsPoints + RunsPoints + SumPoints + FlushPoints + NobPoint.
+    calculate_nob(Hand, Startcard, NobPoint),
+    Value is PairsPoints + SumPoints + FlushPoints + NobPoint.
+    % Value is RunsPoints.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% select hand predicate
+select_hand(Cards, Hand, Cribcards) :-
+    findall(Comb, combination(Cards, 4, Comb), HandsOf4),
+    map_list(expected_value, HandsOf4, ExpectedValues),
+    max_list(ExpectedValues, Max),
+    Max = Hand-_,
+    get_crib(Hand, Cards, Cribcards).
+
+
+expected_value(Hand, Hand-Average) :-
+    findall(card(Rank, Suit), (rank(Rank), suit(Suit), \+ member(card(Rank, Suit), Hand)), StartCards),
+    maplist(hand_value(Hand), StartCards, HandValues),
+    average(HandValues, Average).
+
+
+average(List, Avg) :-
+    sum_list(List, Sum),
+    length(List, Length),
+    Length > 0,
+    Avg is Sum / Length.
+
+max(H1-X, H2-Y, H1-X) :- X >= Y.
+max(H1-X, H2-Y, H2-Y) :- X < Y.
+
+max_list([H-X], H-X).
+max_list([H-X|Xs], Max) :-
+    max_list(Xs, MaxRestH),
+    max(H-X, MaxRestH, Max).
+
+get_crib([], Cards, Cards).
+get_crib([Card|Rest], Cards, Crib) :-
+    select(Card, Cards, UpdatedCards),
+    get_crib(Rest, UpdatedCards, Crib).

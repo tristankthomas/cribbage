@@ -155,8 +155,8 @@ calculate_15s(List, SumPoints) :-
 
 
 % calculate flush points
-calculate_flush(Hand, StartSuit, Points) :-
-    list_to_freq(Hand, Freqs),
+calculate_flush(Suits, StartSuit, Points) :-
+    list_to_freq(Suits, Freqs),
     length(Freqs, 1),
     Freqs = [Suit-_|_],
     ( Suit = StartSuit -> 
@@ -166,7 +166,11 @@ calculate_flush(Hand, StartSuit, Points) :-
 calculate_flush(_, _, 0).
 
 
-
+% calculate nob point
+calculate_nob(Hand, card(Rank, Suit), Points) :-
+    member(card(jack, Suit), Hand),
+    Points = 1.
+calculate_nob(_, _, 0).
 
 % custom maplist
 map_list(_, [], []).
@@ -188,7 +192,9 @@ hand_value(Hand, Startcard, Value) :-
     calculate_15s(List2, SumPoints),
     % flush scoring
     generate_list(Hand, _, card_to_suit, List3),
-    card_to_suit(Startcard, _, Start3),
-    calculate_flush(List3, Start3, FlushPoints),
-    Value is PairsPoints + RunsPoints + SumPoints + FlushPoints.
+    card_to_suit(Startcard, _, StartSuit),
+    calculate_flush(List3, StartSuit, FlushPoints),
+    % nob scoring
+    calculate_nob(Hand, StartCard, NobPoint),
+    Value is PairsPoints + RunsPoints + SumPoints + FlushPoints + NobPoint.
 

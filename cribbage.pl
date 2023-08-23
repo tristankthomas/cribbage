@@ -18,6 +18,7 @@ rank(10).
 rank(jack).
 rank(queen).
 rank(king).
+dummy(1).
 
 suit(diamonds).
 suit(clubs).
@@ -81,11 +82,12 @@ list_to_freq([X|Xs], [X-Freq|Pairs]) :-
 % calculates total points from pairs
 choose_2(1, 0).
 choose_2(N, Res) :-
+    N > 1,
     Res is N * (N - 1) // 2.
 
 calculate_pairs(List, Points) :-
     pairs_values(List, Values),
-    maplist(choose_2, Values, Res),
+    map_list(choose_2, Values, Res),
     sum_list(Res, Sum),
     Points is Sum * 2.
 
@@ -98,18 +100,19 @@ consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx | Run], Remaining) :-
 consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx], [Y-Fy | Rest]) :-
     X + 1 =\= Y.
 
-generate_runs([], []).
-generate_runs([_,_], []).
+generate_runs([], []) :- !.
+generate_runs([_,_], []) :- !.
 generate_runs([X-Fx,Y-Fy|Rest], Runs) :-
     % check for potential runs
     X + 1 =:= Y,
     consecutive_run([X-Fx,Y-Fy|Rest], Run, Excess),
     length(Run, Len),
     Len >= 3,
+    !,
     generate_runs(Excess, NextRuns),
     Runs = [Run-Len|NextRuns].
 % skip through to next value if above clause failed
-generate_runs([_ | Rest], Runs) :-
+generate_runs([_|Rest], Runs) :-
     generate_runs(Rest, Runs).
     
 % multiply elements of list
@@ -187,7 +190,8 @@ calculate_flush(_, _, 0).
 % calculate nob point
 calculate_nob(Hand, card(_, Suit), Points) :-
     member(card(jack, Suit), Hand),
-    Points = 1.
+    Points = 1,
+    !.
 calculate_nob(_, _, 0).
 
 % custom maplist
@@ -204,36 +208,38 @@ hand_value(Hand, Startcard, Value) :-
     msort(List1, Sorted1),
     list_to_freq(Sorted1, Freqs1),
     calculate_pairs(Freqs1, PairsPoints),
-    % calculate_runs(Freqs1, RunsPoints),
+    calculate_runs(Freqs1, RunPoints),
+    % dummy(1),
     % 15s scoring
     generate_list(All, sum, card_to_rank, List2),
     calculate_15s(List2, SumPoints),
-    % flush scoring
+    % % flush scoring
     generate_list(Hand, _, card_to_suit, List3),
     card_to_suit(Startcard, _, StartSuit),
     calculate_flush(List3, StartSuit, FlushPoints),
     % nob scoring
     calculate_nob(Hand, Startcard, NobPoint),
-    Value is PairsPoints + SumPoints + FlushPoints + NobPoint.
-    % Value is RunsPoints.
+    Value is PairsPoints + RunPoints + SumPoints + FlushPoints + NobPoint.
+    % Value is PairsPoints.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % select hand predicate
 select_hand(Cards, Hand, Cribcards) :-
     findall(Comb, combination(Cards, 4, Comb), HandsOf4),
-    map_list(expected_value, HandsOf4, ExpectedValues),
+    map_list(expected_value(Cards), HandsOf4, ExpectedValues),
     max_list(ExpectedValues, Max),
     Max = Hand-_,
     get_crib(Hand, Cards, Cribcards).
 
 
-expected_value(Hand, Hand-Average) :-
+expected_value(Hand, HandOf4, Result) :-
     findall(card(Rank, Suit), (rank(Rank), suit(Suit), \+ member(card(Rank, Suit), Hand)), StartCards),
-    maplist(hand_value(Hand), StartCards, HandValues),
-    average(HandValues, Average).
+    map_list(hand_value(HandOf4), StartCards, HandValues),
+    avg_list(HandValues, Average),
+    Result = HandOf4-Average.
 
 
-average(List, Avg) :-
+avg_list(List, Avg) :-
     sum_list(List, Sum),
     length(List, Length),
     Length > 0,

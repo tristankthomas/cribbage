@@ -68,7 +68,7 @@ count_frequency(_, [], Acc, [], Acc).
 
 count_frequency(Elt, [Elt|Rest], Acc, Excess, Freq) :-
     Acc1 is Acc + 1,
-    count_frequency(Elt, Rest, Acc1, Excess, Freq), !.
+    count_frequency(Elt, Rest, Acc1, Excess, Freq).
 
 count_frequency(Elt, [X|Rest], Acc, [X|Rest], Acc) :-
     Elt \= X.
@@ -100,20 +100,17 @@ consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx | Run], Remaining) :-
 consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx], [Y-Fy | Rest]) :-
     X + 1 =\= Y.
 
-generate_runs([], []) :- !.
-generate_runs([_,_], []) :- !.
+generate_runs([], []).
+generate_runs([_], []).
 generate_runs([X-Fx,Y-Fy|Rest], Runs) :-
-    % check for potential runs
-    X + 1 =:= Y,
+    % find consecutive run
     consecutive_run([X-Fx,Y-Fy|Rest], Run, Excess),
     length(Run, Len),
-    Len >= 3,
-    !,
+    % add run to list if big enough
+    ( Len >= 3 ->
     generate_runs(Excess, NextRuns),
-    Runs = [Run-Len|NextRuns].
-% skip through to next value if above clause failed
-generate_runs([_|Rest], Runs) :-
-    generate_runs(Rest, Runs).
+    Runs = [Run-Len|NextRuns] ;
+    generate_runs(Excess, Runs) ).
     
 % multiply elements of list
 prod_list(L, Prod) :- prod_list(L, 1, Prod).
@@ -178,21 +175,21 @@ calculate_15s(List, SumPoints) :-
 % calculate flush points
 calculate_flush(Suits, StartSuit, Points) :-
     list_to_freq(Suits, Freqs),
-    length(Freqs, 1),
-    Freqs = [Suit-_|_],
-    ( Suit = StartSuit -> 
-        Points = 5 ;
-        Points = 4 ), !.
-
-calculate_flush(_, _, 0).
+    ( length(Freqs, 1) ->
+        Freqs = [Suit-_|_],
+        ( Suit = StartSuit -> 
+            Points = 5 ;
+            Points = 4 )
+    ;
+        Points = 0
+    ).
 
 
 % calculate nob point
 calculate_nob(Hand, card(_, Suit), Points) :-
-    member(card(jack, Suit), Hand),
-    Points = 1,
-    !.
-calculate_nob(_, _, 0).
+    ( member(card(jack, Suit), Hand) ->
+    Points = 1 ;
+    Points = 0 ).
 
 % custom maplist
 map_list(_, [], []).
@@ -245,8 +242,8 @@ avg_list(List, Avg) :-
     Length > 0,
     Avg is Sum / Length.
 
-max(H1-X, H2-Y, H1-X) :- X >= Y.
-max(H1-X, H2-Y, H2-Y) :- X < Y.
+max(H1-X, _-Y, H1-X) :- X >= Y.
+max(_-X, H2-Y, H2-Y) :- X < Y.
 
 max_list([H-X], H-X).
 max_list([H-X|Xs], Max) :-

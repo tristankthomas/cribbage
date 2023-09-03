@@ -8,7 +8,8 @@
 
 %% hand_value(+Hand, +Startcard, -Value)
 %
-%  computes the value of a cribbage hand
+%  computes the value of a cribbage hand (points are given for pairs, runs,
+%  cards summing to 15, flushes and if hand has jack of same suit as start card)
 hand_value(Hand, Startcard, Value) :-
     AllCards = [Startcard|Hand],
     % pairs and runs scoring
@@ -165,11 +166,11 @@ generate_runs([X-Fx,Y-Fy|Rest], Runs) :-
 consecutive_run([], [], []).
 consecutive_run([X-Fx], [X-Fx], []).
 
-consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx | Run], Remaining) :-
+consecutive_run([X-Fx,Y-Fy|Rest], [X-Fx|Run], Remaining) :-
     X + 1 =:= Y,
-    consecutive_run([Y-Fy | Rest], Run, Remaining).
+    consecutive_run([Y-Fy|Rest], Run, Remaining).
 
-consecutive_run([X-Fx, Y-Fy | Rest], [X-Fx], [Y-Fy | Rest]) :-
+consecutive_run([X-Fx,Y-Fy|Rest], [X-Fx], [Y-Fy|Rest]) :-
     X + 1 =\= Y.
 
 
